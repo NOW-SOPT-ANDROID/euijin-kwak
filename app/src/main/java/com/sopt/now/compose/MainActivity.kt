@@ -31,8 +31,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sopt.now.compose.ui.theme.NOWSOPTAndroidTheme
-
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,17 +51,14 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-
-@Composable
-fun TopLevel() {
-    val (text, setText) = remember { mutableStateOf("") }
-
-    val toDoList = remember { mutableStateListOf<ToDoData>() }
+class ToDoViewModel() : ViewModel() {
+    var text by mutableStateOf("")
+    val toDoList = mutableStateListOf<ToDoData>()
 
     val onSubmit: (String) -> Unit = {
         val key = (toDoList.lastOrNull()?.key ?: 0) + 1
         toDoList.add(ToDoData(key, it))
-        setText("")
+        text = ""
     }
 
     val onEdit: (Int, String) -> Unit = { key, newText ->
@@ -77,24 +75,29 @@ fun TopLevel() {
         val i = toDoList.indexOfFirst { it.key == key }
         toDoList.removeAt(i)
     }
+}
 
+@Composable
+fun TopLevel(viewModel: ToDoViewModel = viewModel()) {
     Scaffold { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
             ToDoInput(
-                text = text,
-                onTextChange = setText,
-                onSubmit = onSubmit
+                text = viewModel.text,
+                onTextChange = {
+                    viewModel.text = it
+                },
+                onSubmit = viewModel.onSubmit
             )
             LazyColumn {
                 items(
-                    items = toDoList,
+                    items = viewModel.toDoList,
                     key = { it.key }
                 ) { toDoData ->
                     ToDo(
                         toDoData = toDoData,
-                        onEdit = onEdit,
-                        onToggle = onToggle,
-                        onDelete = onDelete
+                        onEdit = viewModel.onEdit,
+                        onToggle = viewModel.onToggle,
+                        onDelete = viewModel.onDelete
                     )
                 }
             }
@@ -149,11 +152,10 @@ fun ToDo(
     var isEditing by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier.padding(4.dp),
-        elevation = CardDefaults.cardElevation(8.dp)
+        elevation = CardDefaults.elevatedCardElevation(8.dp)
     ) {
         Crossfade(
             targetState = isEditing,
-            label = "",
         ) {
             when (it) {
                 false -> {
